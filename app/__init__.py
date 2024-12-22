@@ -5,43 +5,46 @@ from flask_migrate import Migrate
 from dotenv import load_dotenv
 import os
 import logging
-from config import config
 
 # Configuration du logging
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 load_dotenv()
 
 db = SQLAlchemy()
-migrate = Migrate()
 
-def create_app(config_name=None):
+def create_app():
     app = Flask(__name__)
-    
-    # Configuration
-    if config_name is None:
-        config_name = os.getenv('FLASK_ENV', 'production')
-    app.config.from_object(config[config_name])
     
     # Configuration CORS
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:5173", "https://turo-fleet-manager.netlify.app"],
+            "origins": ["http://localhost:5173"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
     
-    # Initialize extensions
+    # Configuration de la base de données
+    db_path = os.path.join('/home/Youssefaz/turo-fleet-manager', 'fleet.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_12345')
+    
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate = Migrate(app, db)
     
     with app.app_context():
         from .routes import api_bp, main_bp
         app.register_blueprint(api_bp, url_prefix='/api')
         app.register_blueprint(main_bp)
         
-        # Créer les tables si elles n'existent pas
-        db.create_all()
+        try:
+            db.create_all()
+            logger.info("Database tables created successfully")
+        except Exception as e:
+            logger.error(f"Error creating database tables: {str(e)}")
     
     return app
