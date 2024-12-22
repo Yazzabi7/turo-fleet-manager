@@ -28,7 +28,8 @@ def create_app():
     })
     
     # Configuration de la base de données
-    db_path = os.path.join('/home/Youssefaz/turo-fleet-manager', 'fleet.db')
+    db_path = os.path.join('/home/Youssefaz/turo-fleet-manager/instance', 'fleet.db')
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_12345')
