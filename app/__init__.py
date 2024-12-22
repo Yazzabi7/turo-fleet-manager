@@ -10,29 +10,31 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Chargement des variables d'environnement
 load_dotenv()
 
 db = SQLAlchemy()
+migrate = Migrate()
 
-def create_app():
+def create_app(config_name=None):
     app = Flask(__name__)
     
     # Configuration CORS
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:5173"],
+            "origins": ["http://localhost:5173", "https://turo-fleet-manager.netlify.app"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///fleet.db')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_12345')
+    # Configuration
+    if config_name is None:
+        config_name = os.getenv('FLASK_ENV', 'development')
+    app.config.from_object(config[config_name])
     
+    # Initialize extensions
     db.init_app(app)
-    migrate = Migrate(app, db)
+    migrate.init_app(app, db)
     
     with app.app_context():
         from .routes import api_bp, main_bp
