@@ -5,10 +5,10 @@ from flask_migrate import Migrate
 from dotenv import load_dotenv
 import os
 import logging
+from config import config
 
 # Configuration du logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 load_dotenv()
 
@@ -17,6 +17,11 @@ migrate = Migrate()
 
 def create_app(config_name=None):
     app = Flask(__name__)
+    
+    # Configuration
+    if config_name is None:
+        config_name = os.getenv('FLASK_ENV', 'production')
+    app.config.from_object(config[config_name])
     
     # Configuration CORS
     CORS(app, resources={
@@ -27,11 +32,6 @@ def create_app(config_name=None):
         }
     })
     
-    # Configuration
-    if config_name is None:
-        config_name = os.getenv('FLASK_ENV', 'development')
-    app.config.from_object(config[config_name])
-    
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
@@ -41,10 +41,7 @@ def create_app(config_name=None):
         app.register_blueprint(api_bp, url_prefix='/api')
         app.register_blueprint(main_bp)
         
-        try:
-            db.create_all()
-            logger.info("Database tables created successfully")
-        except Exception as e:
-            logger.error(f"Error creating database tables: {str(e)}")
+        # Créer les tables si elles n'existent pas
+        db.create_all()
     
     return app
