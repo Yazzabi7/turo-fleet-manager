@@ -112,11 +112,11 @@ def test():
 def register():
     try:
         data = request.get_json()
-        name = data.get('name')
+        username = data.get('name')  # On récupère 'name' du frontend
         email = data.get('email')
         password = data.get('password')
 
-        if not all([name, email, password]):
+        if not all([username, email, password]):
             return jsonify({'error': 'Tous les champs sont requis'}), 400
 
         # Vérifier si l'utilisateur existe déjà
@@ -125,7 +125,7 @@ def register():
             return jsonify({'error': 'Cet email est déjà utilisé'}), 400
 
         # Créer le nouvel utilisateur
-        new_user = User(name=name, email=email)
+        new_user = User(username=username, email=email)  # Utilise username au lieu de name
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
@@ -154,7 +154,14 @@ def login():
                 JWT_SECRET_KEY,
                 algorithm='HS256'
             )
-            return jsonify({'token': token, 'user': {'id': user.id, 'name': user.name, 'email': user.email}}), 200
+            return jsonify({
+                'token': token,
+                'user': {
+                    'id': user.id,
+                    'name': user.username,  # Utilise username au lieu de name
+                    'email': user.email
+                }
+            }), 200
         
         return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
 
