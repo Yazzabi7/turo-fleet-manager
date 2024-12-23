@@ -88,10 +88,26 @@ def log_action(user_id, action_type, entity_type, entity_id, changes=None):
         logging.error(f"Erreur lors de l'enregistrement de l'action: {str(e)}")
         db.session.rollback()
 
-# Route d'accueil
+# Routes principales - Toutes retournent index.html car React gère les routes côté client
 @main_bp.route('/')
-def index():
-    return send_from_directory('static', 'index.html')
+@main_bp.route('/login')
+@main_bp.route('/register')
+@main_bp.route('/dashboard')
+@main_bp.route('/vehicles')
+@main_bp.route('/vehicles/<int:id>')
+@main_bp.route('/vehicles/add')
+@main_bp.route('/vehicles/edit/<int:id>')
+@main_bp.route('/maintenance')
+@main_bp.route('/maintenance/add')
+@main_bp.route('/maintenance/<int:id>')
+@main_bp.route('/rentals')
+@main_bp.route('/rentals/add')
+@main_bp.route('/rentals/<int:id>')
+@main_bp.route('/history')
+@main_bp.route('/settings')
+@main_bp.route('/profile')
+def serve_app(id=None):
+    return render_template('index.html')
 
 # Route pour servir les fichiers statiques
 @main_bp.route('/static/<path:filename>')
