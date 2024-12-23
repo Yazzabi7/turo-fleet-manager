@@ -124,65 +124,32 @@ def test():
         return jsonify({'error': str(e)}), 500
 
 # Routes d'authentification
-@api_bp.route('/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json()
-        username = data.get('name')  # On récupère 'name' du frontend
-        email = data.get('email')
-        password = data.get('password')
-
-        if not all([username, email, password]):
-            return jsonify({'error': 'Tous les champs sont requis'}), 400
-
-        # Vérifier si l'utilisateur existe déjà
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            return jsonify({'error': 'Cet email est déjà utilisé'}), 400
-
-        # Créer le nouvel utilisateur
-        new_user = User(username=username, email=email)  # Utilise username au lieu de name
-        new_user.set_password(password)
-        db.session.add(new_user)
-        db.session.commit()
-
-        return jsonify({'message': 'Inscription réussie'}), 201
-
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error in register: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/login', methods=['POST'])
+@api_bp.route('/auth/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-
-        if not all([email, password]):
-            return jsonify({'error': 'Email et mot de passe requis'}), 400
-
-        user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
-            token = jwt.encode(
-                {'user_id': user.id, 'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)},
-                JWT_SECRET_KEY,
-                algorithm='HS256'
-            )
-            return jsonify({
-                'token': token,
-                'user': {
-                    'id': user.id,
-                    'name': user.username,  # Utilise username au lieu de name
-                    'email': user.email
-                }
-            }), 200
         
-        return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
-
+        # Validation des données
+        if not data or 'username' not in data or 'password' not in data:
+            return jsonify({'error': 'Nom d\'utilisateur et mot de passe requis'}), 400
+        
+        user = User.query.filter_by(username=data['username']).first()
+        
+        if user is None or not user.check_password(data['password']):
+            return jsonify({'error': 'Nom d\'utilisateur ou mot de passe incorrect'}), 401
+            
+        # Création du token
+        token = jwt.encode({
+            'user_id': user.id,
+            'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+        }, JWT_SECRET_KEY, algorithm='HS256')
+        
+        return jsonify({
+            'token': token,
+            'user': user.to_dict()
+        })
+        
     except Exception as e:
-        logging.error(f"Error in login: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/user', methods=['GET'])

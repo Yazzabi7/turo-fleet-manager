@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createLoginTab() {
         return `
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <form id="loginForm">
                 <div class="field">
                     <input type="email" id="email" placeholder="Email" required>
                 </div>
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createRegisterTab() {
         return `
-            <form id="registerForm" onsubmit="handleRegister(event)">
+            <form id="registerForm">
                 <div class="field">
                     <input type="text" id="name" placeholder="Nom" required>
                 </div>
@@ -73,16 +73,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleLogin(event) {
         event.preventDefault();
-        const email = document.getElementById('email').value;
+        const username = document.getElementById('email').value;  
         const password = document.getElementById('password').value;
 
         try {
-            const response = await fetch('/api/login', {
+            const response = await fetch('/api/auth/login', {  
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ username, password }),  
             });
 
             const data = await response.json();
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleRegister(event) {
         event.preventDefault();
-        const name = document.getElementById('name').value;
+        const username = document.getElementById('name').value;  
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
@@ -116,12 +116,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const response = await fetch('/api/register', {
+            const response = await fetch('/api/auth/register', {  
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name, email, password }),
+                body: JSON.stringify({ username, email, password }),  
             });
 
             const data = await response.json();
@@ -154,9 +154,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the login form
     createLoginForm();
 
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+    
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+
     const loginTab = document.getElementById('loginTab');
     const registerTab = document.getElementById('registerTab');
-
+    
     if (loginTab && registerTab) {
         loginTab.addEventListener('click', () => {
             document.getElementById('loginForm').style.display = 'block';
