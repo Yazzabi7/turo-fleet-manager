@@ -1,4 +1,4 @@
-from flask import jsonify, request, render_template, Blueprint, send_from_directory
+from flask import jsonify, request, send_from_directory, Blueprint
 from .models import Vehicle, Maintenance, Cleaning, Rental, Reminder, Note, User, ActionHistory
 from . import db
 import logging
@@ -107,7 +107,7 @@ def log_action(user_id, action_type, entity_type, entity_id, changes=None):
 @main_bp.route('/settings')
 @main_bp.route('/profile')
 def serve_app(id=None):
-    return render_template('index.html')
+    return send_from_directory('static', 'index.html')
 
 # Route pour servir les fichiers statiques
 @main_bp.route('/static/<path:filename>')
