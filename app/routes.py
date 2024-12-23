@@ -157,9 +157,11 @@ def register():
 def login():
     try:
         data = request.get_json()
+        logging.info(f"Login attempt with data: {data}")
         
         # Validation des données
         if not data or 'username' not in data or 'password' not in data:
+            logging.warning("Missing username or password in request")
             return jsonify({'error': 'Nom d\'utilisateur et mot de passe requis'}), 400
         
         # On cherche l'utilisateur par email ou username
@@ -167,7 +169,12 @@ def login():
             (User.email == data['username']) | (User.username == data['username'])
         ).first()
         
-        if user is None or not user.check_password(data['password']):
+        if user is None:
+            logging.warning(f"No user found with username/email: {data['username']}")
+            return jsonify({'error': 'Nom d\'utilisateur ou mot de passe incorrect'}), 401
+            
+        if not user.check_password(data['password']):
+            logging.warning(f"Invalid password for user: {user.username}")
             return jsonify({'error': 'Nom d\'utilisateur ou mot de passe incorrect'}), 401
             
         # Création du token
@@ -176,6 +183,7 @@ def login():
             'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
         }, JWT_SECRET_KEY, algorithm='HS256')
         
+        logging.info(f"Successful login for user: {user.username}")
         return jsonify({
             'token': token,
             'user': user.to_dict()
