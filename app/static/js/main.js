@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h1>Turo Fleet Manager</h1>
                     </div>
                     <div class="tabs">
-                        <button onclick="switchTab(0)" class="${currentTab === 0 ? 'active' : ''}">Connexion</button>
-                        <button onclick="switchTab(1)" class="${currentTab === 1 ? 'active' : ''}">Inscription</button>
+                        <button id="loginTab" onclick="switchTab(0)" class="${currentTab === 0 ? 'active' : ''}">Connexion</button>
+                        <button id="registerTab" onclick="switchTab(1)" class="${currentTab === 1 ? 'active' : ''}">Inscription</button>
                     </div>
                     <div class="form">
                         ${currentTab === 0 ? createLoginTab() : createRegisterTab()}
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createLoginTab() {
         return `
-            <form onsubmit="handleLogin(event)">
+            <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="field">
                     <input type="email" id="email" placeholder="Email" required>
                 </div>
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createRegisterTab() {
         return `
-            <form onsubmit="handleRegister(event)">
+            <form id="registerForm" onsubmit="handleRegister(event)">
                 <div class="field">
                     <input type="text" id="name" placeholder="Nom" required>
                 </div>
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordInput.type = type;
     };
 
-    window.handleLogin = async function(event) {
+    async function handleLogin(event) {
         event.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
@@ -85,20 +85,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ email, password }),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                const data = await response.json();
                 localStorage.setItem('token', data.token);
-                window.location.href = '/dashboard';
+                localStorage.setItem('user', JSON.stringify(data.user));
+                showMessage('Connexion réussie !', 'success');
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 1000);
             } else {
-                const error = await response.json();
-                showError(error.message || 'Erreur de connexion');
+                showMessage(data.error || 'Erreur lors de la connexion', 'error');
             }
         } catch (error) {
-            showError('Erreur de connexion au serveur');
+            console.error('Error:', error);
+            showMessage('Erreur lors de la connexion', 'error');
         }
-    };
+    }
 
-    window.handleRegister = async function(event) {
+    async function handleRegister(event) {
         event.preventDefault();
         const name = document.getElementById('name').value;
         const email = document.getElementById('email').value;
@@ -106,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const confirmPassword = document.getElementById('confirmPassword').value;
 
         if (password !== confirmPassword) {
-            showError('Les mots de passe ne correspondent pas');
+            showMessage('Les mots de passe ne correspondent pas', 'error');
             return;
         }
 
@@ -119,34 +124,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ name, email, password }),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                switchTab(0);
-                showSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+                showMessage('Inscription réussie ! Vous pouvez maintenant vous connecter.', 'success');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1000);
             } else {
-                const error = await response.json();
-                showError(error.message || 'Erreur lors de l\'inscription');
+                showMessage(data.error || 'Erreur lors de l\'inscription', 'error');
             }
         } catch (error) {
-            showError('Erreur de connexion au serveur');
+            console.error('Error:', error);
+            showMessage('Erreur lors de l\'inscription', 'error');
         }
-    };
-
-    function showError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error';
-        errorDiv.textContent = message;
-        document.querySelector('.form').appendChild(errorDiv);
-        setTimeout(() => errorDiv.remove(), 5000);
     }
 
-    function showSuccess(message) {
-        const successDiv = document.createElement('div');
-        successDiv.className = 'success';
-        successDiv.textContent = message;
-        document.querySelector('.form').appendChild(successDiv);
-        setTimeout(() => successDiv.remove(), 5000);
+    function showMessage(message, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = message;
+        messageDiv.className = `message ${type}`;
+        messageDiv.style.display = 'block';
+
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 3000);
     }
 
     // Initialize the login form
     createLoginForm();
+
+    const loginTab = document.getElementById('loginTab');
+    const registerTab = document.getElementById('registerTab');
+
+    if (loginTab && registerTab) {
+        loginTab.addEventListener('click', () => {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+        });
+
+        registerTab.addEventListener('click', () => {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+        });
+    }
 });
