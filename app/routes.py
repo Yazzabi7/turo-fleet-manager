@@ -91,11 +91,12 @@ def log_action(user_id, action_type, entity_type, entity_id, changes=None):
 # Route d'accueil
 @main_bp.route('/')
 def index():
-    try:
-        return jsonify({"message": "Bienvenue sur l'API de gestion de flotte Turo"})
-    except Exception as e:
-        logging.error(f"Error in index: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+    return send_from_directory('static', 'index.html')
+
+# Route pour servir les fichiers statiques
+@main_bp.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 # Route de test pour vérifier que l'API fonctionne
 @main_bp.route('/test')
