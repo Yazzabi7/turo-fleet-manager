@@ -7,41 +7,43 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="auth-container">
-            <div class="logo">
-                <h1>Turo Fleet Manager</h1>
-            </div>
-            <div class="tabs">
-                <button id="loginTab" class="active">Connexion</button>
-                <button id="registerTab">Inscription</button>
-            </div>
-            <div id="message" class="message" style="display: none;"></div>
-            <div class="form-container">
-                <form id="loginForm" class="form">
-                    <div class="field">
-                        <input type="email" id="email" placeholder="Email" required>
-                    </div>
-                    <div class="field">
-                        <input type="password" id="password" placeholder="Mot de passe" required>
-                    </div>
-                    <button type="submit" class="submit-btn">Se connecter</button>
-                </form>
-                <form id="registerForm" class="form" style="display: none;">
-                    <div class="field">
-                        <input type="text" id="name" placeholder="Nom" required>
-                    </div>
-                    <div class="field">
-                        <input type="email" id="email" placeholder="Email" required>
-                    </div>
-                    <div class="field">
-                        <input type="password" id="password" placeholder="Mot de passe" required>
-                    </div>
-                    <div class="field">
-                        <input type="password" id="confirmPassword" placeholder="Confirmer le mot de passe" required>
-                    </div>
-                    <button type="submit" class="submit-btn">S'inscrire</button>
-                </form>
+    <div id="root">
+        <div class="container">
+            <div class="auth-container">
+                <div class="logo">
+                    <h1>Turo Fleet Manager</h1>
+                </div>
+                <div id="message" class="message" style="display: none;"></div>
+                <div class="tabs">
+                    <button id="loginTab" class="active">Connexion</button>
+                    <button id="registerTab">Inscription</button>
+                </div>
+                <div class="form-container">
+                    <form id="loginForm" class="form">
+                        <div class="field">
+                            <input type="email" id="email" placeholder="Email" required>
+                        </div>
+                        <div class="field">
+                            <input type="password" id="password" placeholder="Mot de passe" required>
+                        </div>
+                        <button type="submit" class="submit-btn">Se connecter</button>
+                    </form>
+                    <form id="registerForm" class="form" style="display: none;">
+                        <div class="field">
+                            <input type="text" id="name" placeholder="Nom" required>
+                        </div>
+                        <div class="field">
+                            <input type="email" id="email" placeholder="Email" required>
+                        </div>
+                        <div class="field">
+                            <input type="password" id="password" placeholder="Mot de passe" required>
+                        </div>
+                        <div class="field">
+                            <input type="password" id="confirmPassword" placeholder="Confirmer le mot de passe" required>
+                        </div>
+                        <button type="submit" class="submit-btn">S'inscrire</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

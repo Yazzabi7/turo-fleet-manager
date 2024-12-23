@@ -123,6 +123,21 @@ def test():
         logging.error(f"Error in test: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+# Route pour servir index.html pour toutes les routes frontend
+@main_bp.route('/', defaults={'path': ''})
+@main_bp.route('/<path:path>')
+def catch_all(path):
+    try:
+        # Si c'est une route API, on laisse passer
+        if path.startswith('api/'):
+            return jsonify({'error': 'Not found'}), 404
+            
+        # Pour toutes les autres routes, on sert index.html
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        logging.error(f"Error in catch_all route: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 # Routes d'authentification
 @api_bp.route('/auth/register', methods=['POST'])
 def register():
