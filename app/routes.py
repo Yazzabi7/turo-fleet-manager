@@ -88,26 +88,37 @@ def log_action(user_id, action_type, entity_type, entity_id, changes=None):
         logging.error(f"Erreur lors de l'enregistrement de l'action: {str(e)}")
         db.session.rollback()
 
-# Routes principales - Toutes retournent index.html car React gère les routes côté client
+# Routes pour servir les pages frontend
 @main_bp.route('/')
 @main_bp.route('/login')
-@main_bp.route('/register')
+def login_page():
+    try:
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        logging.error(f"Error serving login page: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @main_bp.route('/dashboard')
-@main_bp.route('/vehicles')
-@main_bp.route('/vehicles/<int:id>')
-@main_bp.route('/vehicles/add')
-@main_bp.route('/vehicles/edit/<int:id>')
-@main_bp.route('/maintenance')
-@main_bp.route('/maintenance/add')
-@main_bp.route('/maintenance/<int:id>')
-@main_bp.route('/rentals')
-@main_bp.route('/rentals/add')
-@main_bp.route('/rentals/<int:id>')
-@main_bp.route('/history')
-@main_bp.route('/settings')
-@main_bp.route('/profile')
-def serve_app(id=None):
-    return send_from_directory('static', 'index.html')
+def dashboard_page():
+    try:
+        return send_from_directory('static', 'dashboard.html')
+    except Exception as e:
+        logging.error(f"Error serving dashboard page: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# Route catch-all pour les autres pages frontend
+@main_bp.route('/<path:path>')
+def catch_all(path):
+    try:
+        # Si c'est une route API, on laisse passer
+        if path.startswith('api/'):
+            return jsonify({'error': 'Not found'}), 404
+            
+        # Pour toutes les autres routes, on sert index.html
+        return send_from_directory('static', 'index.html')
+    except Exception as e:
+        logging.error(f"Error in catch_all route: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # Route pour servir les fichiers statiques
 @main_bp.route('/static/<path:filename>')
@@ -121,21 +132,6 @@ def test():
         return jsonify({"status": "success", "message": "L'API fonctionne correctement"})
     except Exception as e:
         logging.error(f"Error in test: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-# Route pour servir index.html pour toutes les routes frontend
-@main_bp.route('/', defaults={'path': ''})
-@main_bp.route('/<path:path>')
-def catch_all(path):
-    try:
-        # Si c'est une route API, on laisse passer
-        if path.startswith('api/'):
-            return jsonify({'error': 'Not found'}), 404
-            
-        # Pour toutes les autres routes, on sert index.html
-        return send_from_directory('static', 'index.html')
-    except Exception as e:
-        logging.error(f"Error in catch_all route: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # Routes d'authentification
