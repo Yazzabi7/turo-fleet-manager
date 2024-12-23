@@ -108,6 +108,60 @@ def test():
         return jsonify({'error': str(e)}), 500
 
 # Routes d'authentification
+@api_bp.route('/api/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
+
+        if not all([name, email, password]):
+            return jsonify({'error': 'Tous les champs sont requis'}), 400
+
+        # Vérifier si l'utilisateur existe déjà
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return jsonify({'error': 'Cet email est déjà utilisé'}), 400
+
+        # Créer le nouvel utilisateur
+        new_user = User(name=name, email=email)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({'message': 'Inscription réussie'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in register: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        if not all([email, password]):
+            return jsonify({'error': 'Email et mot de passe requis'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
+            token = jwt.encode(
+                {'user_id': user.id, 'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)},
+                JWT_SECRET_KEY,
+                algorithm='HS256'
+            )
+            return jsonify({'token': token, 'user': {'id': user.id, 'name': user.name, 'email': user.email}}), 200
+        
+        return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
+
+    except Exception as e:
+        logging.error(f"Error in login: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @api_bp.route('/auth/register', methods=['POST'])
 def register():
     try:
