@@ -108,7 +108,7 @@ def test():
         return jsonify({'error': str(e)}), 500
 
 # Routes d'authentification
-@api_bp.route('/api/register', methods=['POST'])
+@api_bp.route('/register', methods=['POST'])
 def register():
     try:
         data = request.get_json()
@@ -137,7 +137,7 @@ def register():
         logging.error(f"Error in register: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/login', methods=['POST'])
+@api_bp.route('/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
@@ -162,7 +162,7 @@ def login():
         logging.error(f"Error in login: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/user', methods=['GET'])
+@api_bp.route('/user', methods=['GET'])
 @login_required
 def get_current_user():
     return jsonify({
@@ -172,7 +172,7 @@ def get_current_user():
     })
 
 # Routes pour l'historique
-@api_bp.route('/api/history', methods=['GET'])
+@api_bp.route('/history', methods=['GET'])
 @login_required
 def get_history():
     try:
@@ -189,7 +189,7 @@ def get_history():
         logging.error(f"Error in get_history: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/history/clear', methods=['POST'])
+@api_bp.route('/history/clear', methods=['POST'])
 @login_required
 def clear_history():
     try:
@@ -202,7 +202,7 @@ def clear_history():
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les véhicules
-@api_bp.route('/api/vehicles', methods=['GET'])
+@api_bp.route('/vehicles', methods=['GET'])
 @login_required
 def get_vehicles():
     try:
@@ -218,7 +218,7 @@ def get_vehicles():
         logging.error(f"Error in get_vehicles: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/vehicles/<int:id>', methods=['GET'])
+@api_bp.route('/vehicles/<int:id>', methods=['GET'])
 @login_required
 def get_vehicle(id):
     try:
@@ -234,7 +234,7 @@ def get_vehicle(id):
         logging.error(f"Error in get_vehicle: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/vehicles', methods=['POST'])
+@api_bp.route('/vehicles', methods=['POST'])
 @login_required
 def create_vehicle():
     try:
@@ -284,7 +284,7 @@ def create_vehicle():
         logging.error(f"Error in create_vehicle: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/vehicles/<int:vehicle_id>', methods=['PUT'])
+@api_bp.route('/vehicles/<int:vehicle_id>', methods=['PUT'])
 @login_required
 def update_vehicle(vehicle_id):
     try:
@@ -355,7 +355,7 @@ def update_vehicle(vehicle_id):
         logging.error(f"Error in update_vehicle: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/vehicles/<int:vehicle_id>', methods=['DELETE'])
+@api_bp.route('/vehicles/<int:vehicle_id>', methods=['DELETE'])
 @login_required
 def delete_vehicle(vehicle_id):
     try:
@@ -389,7 +389,7 @@ def delete_vehicle(vehicle_id):
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les maintenances
-@api_bp.route('/api/maintenances', methods=['GET'])
+@api_bp.route('/maintenances', methods=['GET'])
 @login_required
 def get_maintenances():
     try:
@@ -405,7 +405,7 @@ def get_maintenances():
         logging.error(f"Error in get_maintenances: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/maintenances', methods=['POST'])
+@api_bp.route('/maintenances', methods=['POST'])
 @login_required
 def create_maintenance():
     try:
@@ -442,7 +442,7 @@ def create_maintenance():
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les locations
-@api_bp.route('/api/rentals', methods=['GET'])
+@api_bp.route('/rentals', methods=['GET'])
 @login_required
 def get_rentals():
     try:
@@ -459,7 +459,7 @@ def get_rentals():
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les rappels
-@api_bp.route('/api/reminders', methods=['GET'])
+@api_bp.route('/reminders', methods=['GET'])
 @login_required
 def get_reminders():
     try:
@@ -476,7 +476,7 @@ def get_reminders():
         return jsonify({'error': str(e)}), 500
 
 # Route pour le tableau de bord
-@api_bp.route('/api/dashboard/stats', methods=['GET'])
+@api_bp.route('/dashboard/stats', methods=['GET'])
 @login_required
 def get_dashboard_stats():
     try:
@@ -498,13 +498,13 @@ def get_dashboard_stats():
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les notes
-@api_bp.route('/api/vehicles/<int:vehicle_id>/notes', methods=['GET'])
+@api_bp.route('/vehicles/<int:vehicle_id>/notes', methods=['GET'])
 @login_required
 def get_vehicle_notes(vehicle_id):
     notes = Note.query.filter_by(vehicle_id=vehicle_id).all()
     return jsonify([note.to_dict() for note in notes])
 
-@api_bp.route('/api/vehicles/<int:vehicle_id>/notes', methods=['POST'])
+@api_bp.route('/vehicles/<int:vehicle_id>/notes', methods=['POST'])
 @login_required
 def add_vehicle_note(vehicle_id):
     try:
@@ -541,7 +541,7 @@ def add_vehicle_note(vehicle_id):
         logging.error(f"Error in add_vehicle_note: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['PUT'])
+@api_bp.route('/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['PUT'])
 @login_required
 def update_vehicle_note(vehicle_id, note_id):
     try:
@@ -577,7 +577,7 @@ def update_vehicle_note(vehicle_id, note_id):
         logging.error(f"Error in update_vehicle_note: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['DELETE'])
+@api_bp.route('/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['DELETE'])
 @login_required
 def delete_vehicle_note(vehicle_id, note_id):
     try:
