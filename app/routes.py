@@ -124,6 +124,35 @@ def test():
         return jsonify({'error': str(e)}), 500
 
 # Routes d'authentification
+@api_bp.route('/auth/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+
+        if not all([username, email, password]):
+            return jsonify({'error': 'Tous les champs sont requis'}), 400
+
+        # Vérifier si l'utilisateur existe déjà
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return jsonify({'error': 'Cet email est déjà utilisé'}), 400
+
+        # Créer le nouvel utilisateur
+        new_user = User(username=username, email=email)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({'message': 'Inscription réussie'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in register: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @api_bp.route('/auth/login', methods=['POST'])
 def login():
     try:
@@ -133,7 +162,10 @@ def login():
         if not data or 'username' not in data or 'password' not in data:
             return jsonify({'error': 'Nom d\'utilisateur et mot de passe requis'}), 400
         
-        user = User.query.filter_by(username=data['username']).first()
+        # On cherche l'utilisateur par email ou username
+        user = User.query.filter(
+            (User.email == data['username']) | (User.username == data['username'])
+        ).first()
         
         if user is None or not user.check_password(data['password']):
             return jsonify({'error': 'Nom d\'utilisateur ou mot de passe incorrect'}), 401
@@ -150,6 +182,7 @@ def login():
         })
         
     except Exception as e:
+        logging.error(f"Error in login: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/user', methods=['GET'])
