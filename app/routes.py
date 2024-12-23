@@ -162,250 +162,172 @@ def login():
         logging.error(f"Error in login: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/auth/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json()
-        
-        # Validation des données
-        required_fields = ['username', 'email', 'password']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Le champ {field} est requis'}), 400
-        
-        # Vérification de l'unicité
-        if User.query.filter_by(username=data['username']).first():
-            return jsonify({'error': 'Nom d\'utilisateur déjà utilisé'}), 400
-            
-        if User.query.filter_by(email=data['email']).first():
-            return jsonify({'error': 'Email déjà utilisé'}), 400
-            
-        # Création de l'utilisateur
-        user = User(
-            username=data['username'],
-            email=data['email']
-        )
-        user.set_password(data['password'])
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        # Création du token pour connexion automatique
-        token = jwt.encode({
-            'user_id': user.id,
-            'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
-        }, JWT_SECRET_KEY, algorithm='HS256')
-        
-        return jsonify({
-            'message': 'Utilisateur créé avec succès',
-            'token': token,
-            'user': user.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/auth/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        
-        # Validation des données
-        if not data or 'username' not in data or 'password' not in data:
-            return jsonify({'error': 'Nom d\'utilisateur et mot de passe requis'}), 400
-        
-        user = User.query.filter_by(username=data['username']).first()
-        
-        if user is None or not user.check_password(data['password']):
-            return jsonify({'error': 'Nom d\'utilisateur ou mot de passe incorrect'}), 401
-            
-        # Création du token
-        token = jwt.encode({
-            'user_id': user.id,
-            'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
-        }, JWT_SECRET_KEY, algorithm='HS256')
-        
-        return jsonify({
-            'token': token,
-            'user': user.to_dict()
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/auth/me', methods=['GET'])
+@api_bp.route('/api/user', methods=['GET'])
 @login_required
 def get_current_user():
-    try:
-        return jsonify(request.current_user.to_dict())
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({
+        'id': request.current_user.id,
+        'name': request.current_user.name,
+        'email': request.current_user.email
+    })
 
-@api_bp.route('/history', methods=['GET'])
+# Routes pour l'historique
+@api_bp.route('/api/history', methods=['GET'])
 @login_required
 def get_history():
-    entity_type = request.args.get('entity_type')
-    entity_id = request.args.get('entity_id')
-    
-    query = ActionHistory.query
-    
-    if entity_type:
-        query = query.filter_by(entity_type=entity_type)
-    if entity_id:
-        query = query.filter_by(entity_id=entity_id)
-        
-    actions = query.order_by(ActionHistory.created_at.desc()).all()
-    return jsonify([action.to_dict() for action in actions])
+    try:
+        history = ActionHistory.query.filter_by(user_id=request.current_user.id).order_by(ActionHistory.timestamp.desc()).all()
+        return jsonify([{
+            'id': action.id,
+            'action_type': action.action_type,
+            'entity_type': action.entity_type,
+            'entity_id': action.entity_id,
+            'changes': action.changes,
+            'timestamp': action.timestamp.isoformat()
+        } for action in history])
+    except Exception as e:
+        logging.error(f"Error in get_history: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/history', methods=['DELETE'])
+@api_bp.route('/api/history/clear', methods=['POST'])
 @login_required
 def clear_history():
     try:
-        # Supprimer tout l'historique
-        ActionHistory.query.delete()
+        ActionHistory.query.filter_by(user_id=request.current_user.id).delete()
         db.session.commit()
-        return jsonify({'message': 'Historique supprimé avec succès'}), 200
+        return jsonify({'message': 'Historique effacé avec succès'})
     except Exception as e:
         db.session.rollback()
+        logging.error(f"Error in clear_history: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles', methods=['GET'])
+# Routes pour les véhicules
+@api_bp.route('/api/vehicles', methods=['GET'])
 @login_required
 def get_vehicles():
     try:
         vehicles = Vehicle.query.all()
         return jsonify([{
-            'id': v.id,
-            'brand': v.brand,
-            'model': v.model,
-            'year': v.year,
-            'license_plate': v.license_plate,
-            'status': v.status,
-            'parking_spot': v.parking_spot
-        } for v in vehicles])
+            'id': vehicle.id,
+            'name': vehicle.name,
+            'model': vehicle.model,
+            'year': vehicle.year,
+            'status': vehicle.status
+        } for vehicle in vehicles])
     except Exception as e:
+        logging.error(f"Error in get_vehicles: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles/<int:id>', methods=['GET'])
+@api_bp.route('/api/vehicles/<int:id>', methods=['GET'])
 @login_required
 def get_vehicle(id):
     try:
         vehicle = Vehicle.query.get_or_404(id)
         return jsonify({
             'id': vehicle.id,
-            'brand': vehicle.brand,
+            'name': vehicle.name,
             'model': vehicle.model,
             'year': vehicle.year,
-            'license_plate': vehicle.license_plate,
-            'status': vehicle.status,
-            'parking_spot': vehicle.parking_spot
+            'status': vehicle.status
         })
     except Exception as e:
+        logging.error(f"Error in get_vehicle: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles', methods=['POST'])
+@api_bp.route('/api/vehicles', methods=['POST'])
 @login_required
 def create_vehicle():
     try:
         data = request.get_json()
         
-        # Vérification si la place de parking est déjà utilisée
-        if data.get('parking_spot'):
-            existing_vehicle = Vehicle.query.filter_by(parking_spot=data['parking_spot']).first()
-            if existing_vehicle:
-                return jsonify({'error': f'La place de parking {data["parking_spot"]} est déjà occupée par le véhicule {existing_vehicle.brand} {existing_vehicle.model}'}), 400
-        
-        vehicle = Vehicle(
-            brand=data['brand'],
+        required_fields = ['name', 'model', 'year']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Tous les champs requis doivent être remplis'}), 400
+            
+        new_vehicle = Vehicle(
+            name=data['name'],
             model=data['model'],
             year=data['year'],
-            license_plate=data['license_plate'],
-            status=data.get('status', 'available'),
-            parking_spot=data.get('parking_spot')
+            status=data.get('status', 'available')
         )
         
-        db.session.add(vehicle)
+        db.session.add(new_vehicle)
         db.session.commit()
         
-        # Log de l'action
+        # Log the action
         log_action(
             user_id=request.current_user.id,
             action_type='create',
             entity_type='vehicle',
-            entity_id=vehicle.id,
-            changes=data
+            entity_id=new_vehicle.id,
+            changes={
+                'name': new_vehicle.name,
+                'model': new_vehicle.model,
+                'year': new_vehicle.year,
+                'status': new_vehicle.status
+            }
         )
         
-        return jsonify({'vehicle': vehicle.to_dict()}), 201
+        return jsonify({
+            'message': 'Véhicule créé avec succès',
+            'vehicle': {
+                'id': new_vehicle.id,
+                'name': new_vehicle.name,
+                'model': new_vehicle.model,
+                'year': new_vehicle.year,
+                'status': new_vehicle.status
+            }
+        }), 201
         
     except Exception as e:
         db.session.rollback()
+        logging.error(f"Error in create_vehicle: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles/<int:vehicle_id>', methods=['PUT'])
+@api_bp.route('/api/vehicles/<int:vehicle_id>', methods=['PUT'])
 @login_required
 def update_vehicle(vehicle_id):
     try:
         vehicle = Vehicle.query.get_or_404(vehicle_id)
         data = request.get_json()
-        logging.debug(f"Updating vehicle {vehicle_id} with data: {data}")
         
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-            
-        # Vérifier si la nouvelle plaque existe déjà (sauf pour le véhicule actuel)
-        if 'license_plate' in data and data['license_plate'] != vehicle.license_plate:
-            existing_vehicle = Vehicle.query.filter_by(license_plate=data['license_plate']).first()
-            if existing_vehicle:
-                return jsonify({'error': 'Cette plaque d\'immatriculation existe déjà'}), 400
-        
-        # Vérifier si la place de parking est déjà occupée par un autre véhicule
-        if data.get('parking_spot') and data['parking_spot'] != vehicle.parking_spot:
-            existing_vehicle = Vehicle.query.filter_by(parking_spot=data['parking_spot']).first()
-            if existing_vehicle:
-                return jsonify({
-                    'error': 'Place de parking déjà occupée',
-                    'details': f'La place {data["parking_spot"]} est déjà occupée par le véhicule {existing_vehicle.license_plate}'
-                }), 400
-
-        # Mise à jour des champs
+        # Track changes for history
         changes = {}
-        if 'brand' in data:
-            if vehicle.brand != data['brand']:
-                changes['brand'] = {'old': vehicle.brand, 'new': data['brand']}
-            vehicle.brand = data['brand']
-        if 'model' in data:
-            if vehicle.model != data['model']:
-                changes['model'] = {'old': vehicle.model, 'new': data['model']}
+        
+        # Update only if field is present in request
+        if 'name' in data and data['name'] != vehicle.name:
+            changes['name'] = {
+                'old': vehicle.name,
+                'new': data['name']
+            }
+            vehicle.name = data['name']
+            
+        if 'model' in data and data['model'] != vehicle.model:
+            changes['model'] = {
+                'old': vehicle.model,
+                'new': data['model']
+            }
             vehicle.model = data['model']
-        if 'year' in data:
-            try:
-                new_year = int(data['year'])
-                if vehicle.year != new_year:
-                    changes['year'] = {'old': vehicle.year, 'new': new_year}
-                vehicle.year = new_year
-            except (ValueError, TypeError):
-                return jsonify({'error': 'L\'année doit être un nombre valide'}), 400
-        if 'license_plate' in data:
-            if vehicle.license_plate != data['license_plate']:
-                changes['license_plate'] = {'old': vehicle.license_plate, 'new': data['license_plate']}
-            vehicle.license_plate = data['license_plate']
-        if 'status' in data:
-            if vehicle.status != data['status']:
-                changes['status'] = {'old': vehicle.status, 'new': data['status']}
+            
+        if 'year' in data and data['year'] != vehicle.year:
+            changes['year'] = {
+                'old': vehicle.year,
+                'new': data['year']
+            }
+            vehicle.year = data['year']
+            
+        if 'status' in data and data['status'] != vehicle.status:
+            changes['status'] = {
+                'old': vehicle.status,
+                'new': data['status']
+            }
             vehicle.status = data['status']
-        if 'parking_spot' in data:
-            old_spot = vehicle.parking_spot or '-'
-            new_spot = data['parking_spot'] or '-'
-            if old_spot != new_spot:
-                changes['parking_spot'] = {'old': old_spot, 'new': new_spot}
-            vehicle.parking_spot = data['parking_spot']
         
-        db.session.commit()
-        
-        # Log de l'action
-        if changes:  # Ne log que s'il y a des changements
+        # Only commit if there are changes
+        if changes:
+            db.session.commit()
+            
+            # Log the action
             log_action(
                 user_id=request.current_user.id,
                 action_type='update',
@@ -413,230 +335,273 @@ def update_vehicle(vehicle_id):
                 entity_id=vehicle.id,
                 changes=changes
             )
-        
-        return jsonify({
-            'message': 'Vehicle updated successfully',
-            'vehicle': {
-                'id': vehicle.id,
-                'brand': vehicle.brand,
-                'model': vehicle.model,
-                'year': vehicle.year,
-                'license_plate': vehicle.license_plate,
-                'status': vehicle.status,
-                'parking_spot': vehicle.parking_spot
-            }
-        })
-        
+            
+            return jsonify({
+                'message': 'Véhicule mis à jour avec succès',
+                'vehicle': {
+                    'id': vehicle.id,
+                    'name': vehicle.name,
+                    'model': vehicle.model,
+                    'year': vehicle.year,
+                    'status': vehicle.status
+                },
+                'changes': changes
+            })
+        else:
+            return jsonify({'message': 'Aucun changement détecté'})
+            
     except Exception as e:
-        logging.error(f"Error in update_vehicle: {str(e)}")
         db.session.rollback()
+        logging.error(f"Error in update_vehicle: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles/<int:vehicle_id>', methods=['DELETE'])
+@api_bp.route('/api/vehicles/<int:vehicle_id>', methods=['DELETE'])
 @login_required
 def delete_vehicle(vehicle_id):
     try:
         vehicle = Vehicle.query.get_or_404(vehicle_id)
         
-        # Supprimer d'abord les enregistrements liés
-        Maintenance.query.filter_by(vehicle_id=vehicle_id).delete()
-        Cleaning.query.filter_by(vehicle_id=vehicle_id).delete()
-        Rental.query.filter_by(vehicle_id=vehicle_id).delete()
+        # Store vehicle info before deletion for history
+        vehicle_info = {
+            'name': vehicle.name,
+            'model': vehicle.model,
+            'year': vehicle.year,
+            'status': vehicle.status
+        }
         
-        # Puis supprimer le véhicule
         db.session.delete(vehicle)
         db.session.commit()
         
-        # Log de l'action
+        # Log the action
         log_action(
             user_id=request.current_user.id,
             action_type='delete',
             entity_type='vehicle',
-            entity_id=vehicle_id
+            entity_id=vehicle_id,
+            changes=vehicle_info
         )
         
-        return jsonify({'message': 'Véhicule supprimé avec succès'}), 200
+        return jsonify({'message': 'Véhicule supprimé avec succès'})
+        
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Erreur lors de la suppression du véhicule {vehicle_id}: {str(e)}")
-        return jsonify({'error': 'Erreur lors de la suppression du véhicule'}), 500
+        logging.error(f"Error in delete_vehicle: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # Routes pour les maintenances
-@api_bp.route('/maintenances', methods=['GET'])
+@api_bp.route('/api/maintenances', methods=['GET'])
 @login_required
 def get_maintenances():
     try:
         maintenances = Maintenance.query.all()
         return jsonify([{
-            'id': m.id,
-            'vehicle_id': m.vehicle_id,
-            'type': m.type,
-            'description': m.description,
-            'date': m.date.isoformat(),
-            'status': m.status
-        } for m in maintenances])
+            'id': maintenance.id,
+            'vehicle_id': maintenance.vehicle_id,
+            'type': maintenance.type,
+            'date': maintenance.date.isoformat(),
+            'notes': maintenance.notes
+        } for maintenance in maintenances])
     except Exception as e:
         logging.error(f"Error in get_maintenances: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/maintenances', methods=['POST'])
+@api_bp.route('/api/maintenances', methods=['POST'])
 @login_required
 def create_maintenance():
     try:
         data = request.get_json()
-        maintenance = Maintenance(
+        
+        required_fields = ['vehicle_id', 'type', 'date']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Tous les champs requis doivent être remplis'}), 400
+            
+        new_maintenance = Maintenance(
             vehicle_id=data['vehicle_id'],
             type=data['type'],
-            description=data.get('description'),
-            date=datetime.fromisoformat(data['date']),
-            status=data.get('status', 'scheduled')
+            date=datetime.fromisoformat(data['date'].replace('Z', '+00:00')),
+            notes=data.get('notes', '')
         )
-        db.session.add(maintenance)
+        
+        db.session.add(new_maintenance)
         db.session.commit()
         
-        # Log de l'action
-        log_action(
-            user_id=request.current_user.id,
-            action_type='create',
-            entity_type='maintenance',
-            entity_id=maintenance.id,
-            changes=data
-        )
+        return jsonify({
+            'message': 'Maintenance créée avec succès',
+            'maintenance': {
+                'id': new_maintenance.id,
+                'vehicle_id': new_maintenance.vehicle_id,
+                'type': new_maintenance.type,
+                'date': new_maintenance.date.isoformat(),
+                'notes': new_maintenance.notes
+            }
+        }), 201
         
-        return jsonify({'message': 'Maintenance created successfully', 'id': maintenance.id}), 201
     except Exception as e:
-        logging.error(f"Error in create_maintenance: {str(e)}")
         db.session.rollback()
+        logging.error(f"Error in create_maintenance: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les locations
-@api_bp.route('/rentals', methods=['GET'])
+@api_bp.route('/api/rentals', methods=['GET'])
 @login_required
 def get_rentals():
     try:
         rentals = Rental.query.all()
         return jsonify([{
-            'id': r.id,
-            'vehicle_id': r.vehicle_id,
-            'start_date': r.start_date.isoformat(),
-            'end_date': r.end_date.isoformat(),
-            'turo_booking_id': r.turo_booking_id,
-            'status': r.status
-        } for r in rentals])
+            'id': rental.id,
+            'vehicle_id': rental.vehicle_id,
+            'start_date': rental.start_date.isoformat(),
+            'end_date': rental.end_date.isoformat() if rental.end_date else None,
+            'status': rental.status
+        } for rental in rentals])
     except Exception as e:
         logging.error(f"Error in get_rentals: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # Routes pour les rappels
-@api_bp.route('/reminders', methods=['GET'])
+@api_bp.route('/api/reminders', methods=['GET'])
 @login_required
 def get_reminders():
     try:
-        reminders = Reminder.query.filter_by(status='pending').all()
+        reminders = Reminder.query.all()
         return jsonify([{
-            'id': r.id,
-            'vehicle_id': r.vehicle_id,
-            'type': r.type,
-            'description': r.description,
-            'due_date': r.due_date.isoformat(),
-            'status': r.status
-        } for r in reminders])
+            'id': reminder.id,
+            'vehicle_id': reminder.vehicle_id,
+            'title': reminder.title,
+            'description': reminder.description,
+            'due_date': reminder.due_date.isoformat()
+        } for reminder in reminders])
     except Exception as e:
         logging.error(f"Error in get_reminders: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # Route pour le tableau de bord
-@api_bp.route('/dashboard', methods=['GET'])
+@api_bp.route('/api/dashboard/stats', methods=['GET'])
 @login_required
 def get_dashboard_stats():
     try:
-        stats = {
-            'total_vehicles': Vehicle.query.count(),
-            'available_vehicles': Vehicle.query.filter_by(status='available').count(),
-            'rented_vehicles': Vehicle.query.filter_by(status='rented').count(),
-            'maintenance_vehicles': Vehicle.query.filter_by(status='maintenance').count(),
-            'needs_repair': Vehicle.query.filter_by(status='needs_repair').count(),
-            'needs_cleaning': Vehicle.query.filter_by(status='needs_cleaning').count(),
-            'active_rentals': Rental.query.filter_by(status='active').count(),
-            'pending_maintenances': Maintenance.query.filter_by(status='scheduled').count(),
-            'pending_cleanings': Cleaning.query.filter_by(status='scheduled').count()
-        }
-        return jsonify(stats)
+        total_vehicles = Vehicle.query.count()
+        available_vehicles = Vehicle.query.filter_by(status='available').count()
+        active_rentals = Rental.query.filter_by(status='active').count()
+        pending_maintenances = Maintenance.query.filter(
+            Maintenance.date > datetime.utcnow()
+        ).count()
+        
+        return jsonify({
+            'total_vehicles': total_vehicles,
+            'available_vehicles': available_vehicles,
+            'active_rentals': active_rentals,
+            'pending_maintenances': pending_maintenances
+        })
     except Exception as e:
-        app.logger.error(f"Erreur lors de la récupération des statistiques: {str(e)}")
-        return jsonify({'error': 'Erreur lors de la récupération des statistiques'}), 500
+        logging.error(f"Error in get_dashboard_stats: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # Routes pour les notes
-@api_bp.route('/vehicles/<int:vehicle_id>/notes', methods=['GET'])
+@api_bp.route('/api/vehicles/<int:vehicle_id>/notes', methods=['GET'])
 @login_required
 def get_vehicle_notes(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    return jsonify([note.to_dict() for note in vehicle.notes])
+    notes = Note.query.filter_by(vehicle_id=vehicle_id).all()
+    return jsonify([note.to_dict() for note in notes])
 
-@api_bp.route('/vehicles/<int:vehicle_id>/notes', methods=['POST'])
+@api_bp.route('/api/vehicles/<int:vehicle_id>/notes', methods=['POST'])
 @login_required
 def add_vehicle_note(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    data = request.get_json()
-    
-    if not data.get('content'):
-        return jsonify({'error': 'Le contenu de la note est requis'}), 400
+    try:
+        data = request.get_json()
         
-    note = Note(
-        vehicle_id=vehicle_id,
-        content=data['content']
-    )
-    
-    db.session.add(note)
-    db.session.commit()
-    
-    # Log de l'action
-    log_action(
-        user_id=request.current_user.id,
-        action_type='create',
-        entity_type='note',
-        entity_id=note.id,
-        changes=data
-    )
-    
-    return jsonify(note.to_dict()), 201
+        if 'content' not in data:
+            return jsonify({'error': 'Le contenu de la note est requis'}), 400
+            
+        new_note = Note(
+            vehicle_id=vehicle_id,
+            content=data['content'],
+            user_id=request.current_user.id
+        )
+        
+        db.session.add(new_note)
+        db.session.commit()
+        
+        # Log the action
+        log_action(
+            user_id=request.current_user.id,
+            action_type='create',
+            entity_type='note',
+            entity_id=new_note.id,
+            changes={'content': new_note.content}
+        )
+        
+        return jsonify({
+            'message': 'Note ajoutée avec succès',
+            'note': new_note.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in add_vehicle_note: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['PUT'])
+@api_bp.route('/api/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['PUT'])
 @login_required
 def update_vehicle_note(vehicle_id, note_id):
-    note = Note.query.filter_by(id=note_id, vehicle_id=vehicle_id).first_or_404()
-    data = request.get_json()
-    
-    if not data.get('content'):
-        return jsonify({'error': 'Le contenu de la note est requis'}), 400
+    try:
+        note = Note.query.get_or_404(note_id)
+        data = request.get_json()
         
-    note.content = data['content']
-    db.session.commit()
-    
-    # Log de l'action
-    log_action(
-        user_id=request.current_user.id,
-        action_type='update',
-        entity_type='note',
-        entity_id=note.id,
-        changes=data
-    )
-    
-    return jsonify(note.to_dict())
+        if note.vehicle_id != vehicle_id:
+            return jsonify({'error': 'Note non trouvée pour ce véhicule'}), 404
+            
+        if 'content' not in data:
+            return jsonify({'error': 'Le contenu de la note est requis'}), 400
+            
+        old_content = note.content
+        note.content = data['content']
+        db.session.commit()
+        
+        # Log the action
+        log_action(
+            user_id=request.current_user.id,
+            action_type='update',
+            entity_type='note',
+            entity_id=note.id,
+            changes={'content': {'old': old_content, 'new': note.content}}
+        )
+        
+        return jsonify({
+            'message': 'Note mise à jour avec succès',
+            'note': note.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in update_vehicle_note: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['DELETE'])
+@api_bp.route('/api/vehicles/<int:vehicle_id>/notes/<int:note_id>', methods=['DELETE'])
 @login_required
 def delete_vehicle_note(vehicle_id, note_id):
-    note = Note.query.filter_by(id=note_id, vehicle_id=vehicle_id).first_or_404()
-    db.session.delete(note)
-    db.session.commit()
-    
-    # Log de l'action
-    log_action(
-        user_id=request.current_user.id,
-        action_type='delete',
-        entity_type='note',
-        entity_id=note_id
-    )
-    
-    return '', 204
+    try:
+        note = Note.query.get_or_404(note_id)
+        
+        if note.vehicle_id != vehicle_id:
+            return jsonify({'error': 'Note non trouvée pour ce véhicule'}), 404
+            
+        note_content = note.content
+        db.session.delete(note)
+        db.session.commit()
+        
+        # Log the action
+        log_action(
+            user_id=request.current_user.id,
+            action_type='delete',
+            entity_type='note',
+            entity_id=note_id,
+            changes={'content': note_content}
+        )
+        
+        return jsonify({'message': 'Note supprimée avec succès'})
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in delete_vehicle_note: {str(e)}")
+        return jsonify({'error': str(e)}), 500
