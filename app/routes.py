@@ -91,7 +91,11 @@ def log_action(user_id, action_type, entity_type, entity_id, changes=None):
 # Route d'accueil
 @main_bp.route('/')
 def index():
-    return send_from_directory('static', 'index.html')
+    try:
+        return jsonify({"message": "Bienvenue sur l'API de gestion de flotte Turo"})
+    except Exception as e:
+        logging.error(f"Error in index: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # Route de test pour vérifier que l'API fonctionne
 @main_bp.route('/test')
