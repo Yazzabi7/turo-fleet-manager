@@ -1,44 +1,7 @@
-// Fonctions communes
-function showMessage(message, type) {
-    const messageDiv = document.getElementById('message');
-    if (messageDiv) {
-        messageDiv.textContent = message;
-        messageDiv.className = `message ${type}`;
-        messageDiv.style.display = 'block';
-
-        // Cacher le message après 3 secondes
-        setTimeout(() => {
-            messageDiv.style.display = 'none';
-        }, 3000);
-    }
-}
-
-// Fonction pour vérifier si l'utilisateur est connecté
-function isAuthenticated() {
-    return localStorage.getItem('token') !== null;
-}
-
-// Fonction pour déconnecter l'utilisateur
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier si l'utilisateur est déjà connecté
-    const token = localStorage.getItem('token');
-    const currentPath = window.location.pathname;
-
-    // Si l'utilisateur est connecté et qu'il est sur la page de login, le rediriger vers le dashboard
-    if (token && (currentPath === '/' || currentPath === '/login')) {
+    // Si l'utilisateur est déjà connecté, le rediriger vers le dashboard
+    if (isAuthenticated()) {
         window.location.href = '/dashboard';
-        return;
-    }
-
-    // Si l'utilisateur n'est pas connecté et qu'il essaie d'accéder à une page protégée, le rediriger vers login
-    if (!token && currentPath !== '/' && currentPath !== '/login' && currentPath !== '/register') {
-        window.location.href = '/login';
         return;
     }
 
